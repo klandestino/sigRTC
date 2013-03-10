@@ -27,3 +27,8 @@ document.getElementById('getAnswerButton').onclick = function() {
 
 }
 
+peerConnection.onicecandidate = function(e) {
+	if (e.candidate != null) {
+		document.getElementById('localcandidates').value = document.getElementById('localcandidates').value + JSON.stringify(e.candidate) + "\n";
+	}
+}
