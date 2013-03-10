@@ -20,3 +20,10 @@ document.getElementById('answerButton').onclick = function() {
 	});
 
 };
+
+document.getElementById('getAnswerButton').onclick = function() {
+
+	peerConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(document.getElementById('incominganswer').value)));
+
+}
+
