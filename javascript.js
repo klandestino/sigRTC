@@ -32,3 +32,15 @@ peerConnection.onicecandidate = function(e) {
 		document.getElementById('localcandidates').value = document.getElementById('localcandidates').value + JSON.stringify(e.candidate) + "\n";
 	}
 }
+
+document.getElementById('candidatesButton').onclick = function() {
+	candidates = document.getElementById('remotecandidates').value.split("\n");
+	for (i in candidates) {
+		if (candidates[i] != '') {
+			candidate = JSON.parse(candidates[i]);
+			peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+		}
+	}
+}
+
+
