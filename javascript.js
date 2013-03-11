@@ -1,5 +1,5 @@
 
-peerConnection = new webkitRTCPeerConnection({ iceServers: [ ] }, {optional: [{RtpDataChannels: true}]});
+peerConnection = new webkitRTCPeerConnection({ iceServers: [ {"url": "stun:stun.l.google.com:19302"} ] }, {optional: [{RtpDataChannels: true}]});
 
 document.getElementById('offerButton').onclick = function() {
 
