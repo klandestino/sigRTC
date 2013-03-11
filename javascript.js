@@ -1,5 +1,5 @@
 
-peerConnection = new webkitRTCPeerConnection(null);
+peerConnection = new webkitRTCPeerConnection({ iceServers: [ ] }, {optional: [{RtpDataChannels: true}]});
 
 document.getElementById('offerButton').onclick = function() {
 
@@ -51,6 +51,23 @@ peerConnection.onaddstream = function(e) {
 	document.getElementById('ljudobild').src = URL.createObjectURL(e.stream);
 	console.log('Remote stream added.');
 };
+
+function addChatMsg(str) {
+	document.getElementById('chatoutput').appendChild(document.createTextNode(str));
+	document.getElementById('chatoutput').appendChild(document.createElement('br'));
+}
+dataChannel = peerConnection.createDataChannel('test', {reliable:false});
+document.getElementById('chatinput').onkeyup = function(e) {
+	if (e.keyCode == 13) {
+		dataChannel.send(document.getElementById('chatinput').value);
+		addChatMsg('Jag: ' + document.getElementById('chatinput').value);
+		document.getElementById('chatinput').value = '';
+
+	}
+}
+dataChannel.onmessage = function(e) {
+	addChatMsg('Du: ' + e.data);
+}
 
 
 
