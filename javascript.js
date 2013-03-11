@@ -43,4 +43,14 @@ document.getElementById('candidatesButton').onclick = function() {
 	}
 }
 
+navigator.webkitGetUserMedia({ "audio": true, "video": true }, function (stream) {
+	peerConnection.addStream(stream);
+});
+
+peerConnection.onaddstream = function(e) {
+	document.getElementById('ljudobild').src = URL.createObjectURL(e.stream);
+	console.log('Remote stream added.');
+};
+
+
 
