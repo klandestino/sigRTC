@@ -9,7 +9,8 @@ sigRTC - A protocol and a couple of servers for WebRTC signaling
 * Very minimalistic approach on the protocol, trying to keep bandwidth and number of requests down.
 * The protocol does not do any authentication/authorization. The intent is to make P2P available for all!
 * Anyone who would like to participate to a more open/free Internet should be able to deploy this protocol
-  at their web server/page.
+  at their web server/page. (That means: We should have lots of implementations in different languages,
+  as plugins to popular CMS platforms like Wordpress, etc.)
 
 ### The protocol
 
@@ -117,9 +118,10 @@ return nothing.
 5. If there was no answer, then wait some moments and Goto 4 (we should be able to use the same ID).
 6. We got an answer (at 4 above)
 7. Send candidates (`act=cand` & `who=offer`) and wait for candidates from the other end.
-8. You got candidates, Goto 12. You did not get candidates, retry 7.
-9. There was an available offer, so we create and answer and sends it (`act=answer´).
+8. You got candidates, Goto 13. You did not get candidates, retry 7.
+9. There was an available offer, so we create an answer and send it (`act=answer´).
 10. Now, wait for candidates from the other end. When they arrive, Goto 12.
 11. If candidates never arrive, then retry! Goto 9.
-12. You are finished! WebRTC should be able to connect!
+12. Send our own candidates (`act=cand` & `who=answer`).
+13. You are finished! WebRTC should be able to connect!
 
