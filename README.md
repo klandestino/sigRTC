@@ -23,6 +23,9 @@ All requests to sigRTC should have the POST variable `realm=`.
 The realm identifies your application/protocol, so you connect to someone using compatible software.
 It is just some random string that you choose yourself. It could be `realm=MyApp` or actually anything.
 
+To avoid any troubles with case insensitive file systems or other fuckups, we are a bit anal and only
+allow lower case a-z and 0-9 chars in the realm string.
+
 #### Send an offer
 
 When you have created a WebRTC "offer", you should post it to a sigRTC server to say
@@ -113,7 +116,7 @@ return nothing.
 
 1. Client tries to find and offer (`act=find`), with long polling turned off (`long=0`)
 2. If there was an offer available, then Goto 9. Otherwise continue at 3.
-3. There was no available offer, so we create an offer and sends it (`act=offer`).
+3. There was no available offer, so we create an offer and send it (`act=offer`) and get an ID back.
 4. Now, wait for an answer, doing long polling (`act=wait`).
 5. If there was no answer, then wait some moments and Goto 4 (we should be able to use the same ID).
 6. We got an answer (at 4 above)
