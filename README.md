@@ -24,6 +24,9 @@ The realm identifies your application/protocol/whatever, so you connect to someo
 It is just some random string that you choose yourself. It could be `realm=myapp` or actually anything.
 If two clients should be able to connect to each other, they must use the same realm.
 
+You can also use the realm to separate the users at your site. An example: add a chat room name to your realm string,
+to make sure users will only connect to other users in the same chat room.
+
 To avoid any implementation troubles with case insensitive file systems or other fuckups,
 we are a bit anal and only allow lower case a-z and 0-9 chars in the realm string.
 
