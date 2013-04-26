@@ -1,6 +1,6 @@
 ## sigRTC
 
-sigRTC - A protocol and a couple of servers for WebRTC signaling
+sigRTC - A WebRTC signaling protocol
 
 ### What is sigRTC?
 
@@ -20,24 +20,25 @@ In this documentation, the example URL is http://example.org/foo/bar
 #### The Realm
 
 All requests to sigRTC should have the POST variable `realm=`.
-The realm identifies your application/protocol, so you connect to someone using compatible software.
-It is just some random string that you choose yourself. It could be `realm=MyApp` or actually anything.
+The realm identifies your application/protocol/whatever, so you connect to someone using compatible software.
+It is just some random string that you choose yourself. It could be `realm=myapp` or actually anything.
+If two clients should be able to connect to each other, they must use the same realm.
 
-To avoid any troubles with case insensitive file systems or other fuckups, we are a bit anal and only
-allow lower case a-z and 0-9 chars in the realm string.
+To avoid any implementation troubles with case insensitive file systems or other fuckups,
+we are a bit anal and only allow lower case a-z and 0-9 chars in the realm string.
 
 #### Send an offer
 
 When you have created a WebRTC "offer", you should post it to a sigRTC server to say
 "Hey ppl! I'm here now, please connect to me!" This is how:
 
-    realm=MyApp
+    realm=myapp
     act=offer
     sdp=[webrtc offer sdp string]
 
 This request should return an ID string, identifying this connection attempt:
 
-    { "id": "112340916234981276349123674" }
+    { "id": "d131dd02c5e6eec4" }
 
 The id string could be anything. It is up to the server implementation to make sure it is something unique.
 
@@ -70,7 +71,7 @@ This request should return:
 
     {
       "sdp": "[the webrtc offer sdp string from the other user]"
-      "id": "112340916234981276349123674"
+      "id": "d131dd02c5e6eec4"
     }
 
 If there is no offer available, then it should return nothing (an empty string, 0 bytes, you know...).
