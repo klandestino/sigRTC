@@ -95,6 +95,15 @@ This is always a long polling request. It should return all ICE candidates from 
 If the long polling times out or no candidates are ever sent, this request should not return anything
 at all (0 bytes, en empty string, nothing, you get it...)
 
+This request should return:
+
+    {
+      "cands": [
+        "some candidate string",
+        "some other candidate string"
+      ]
+    }
+
 #### Send candidates
 
 Send candidates to the other user.
@@ -113,7 +122,7 @@ and returns an JSON array with all candidates from the other client. If the long
 out or if no candidates are sent by the other client, this request returns nothing (0 bytes, an empty string,
 or whatever...).
 
-If this call is made by the one who made an answer, then this call is not long polling and it will always
+If this2 call is made by the one who made an answer, then this call is not long polling and it will always
 return nothing.
 
 #### The full connection process:
