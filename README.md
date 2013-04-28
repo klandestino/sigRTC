@@ -98,7 +98,7 @@ at all (0 bytes, en empty string, nothing, you get it...)
 This request should return:
 
     {
-      "cands": [
+      "candidates": [
         "some candidate string",
         "some other candidate string"
       ]
@@ -111,7 +111,7 @@ Send candidates to the other user.
     realm=MyApp
     act=cand
     id=[the id string that came with the offer]
-    cands="[ json array with all candidates ]"
+    candidates="[ json array with all candidates ]"
     who=offer
 
 The `who` variable could be "offer" or "answer", defining if the caller was the one who made the offer
