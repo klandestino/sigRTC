@@ -1,8 +1,4 @@
-## sigRTC
-
-sigRTC - A WebRTC signaling protocol
-
-### What is sigRTC?
+## What is sigRTC?
 
 * A generic HTTP protocol for exchanging WebRTC "offers", "answers" and "candidates",
   to start WebRTC P2P connections.
@@ -12,12 +8,12 @@ sigRTC - A WebRTC signaling protocol
   at their web server/page. (That means: We should have lots of implementations in different languages,
   as plugins to popular CMS platforms like Wordpress, etc.)
 
-### The protocol
+## The protocol
 
 Each deployment of the protocol should be available over HTTP(S) POST requests at some URL.
 In this documentation, the example URL is http://example.org/foo/bar
 
-#### The Realm
+### The Realm
 
 All requests to sigRTC should have the POST variable `realm=`.
 The realm identifies your application/protocol/whatever, so you connect to someone using compatible software.
@@ -30,7 +26,7 @@ to make sure users will only connect to other users in the same chat room.
 To avoid any implementation troubles with case insensitive file systems or other fuckups,
 we are a bit anal and only allow lower case a-z and 0-9 chars in the realm string.
 
-#### Send an offer
+### Send an offer
 
 When you have created a WebRTC "offer", you should post it to a sigRTC server to say
 "Hey ppl! I'm here now, please connect to me!" This is how:
@@ -45,7 +41,7 @@ This request should return an ID string, identifying this connection attempt:
 
 The id string could be anything. It is up to the server implementation to make sure it is something unique.
 
-#### Wait for an answer
+### Wait for an answer
 
 After you have sent an offer and got an ID, you should wait for an answer.
 
@@ -60,7 +56,7 @@ This request is a long polling request and it should return:
 If the long polling connection times out or we never get an answer, then this request should return nothing
 (0 bytes, an empty string, or whatever you call it...)
 
-#### Find an offer
+### Find an offer
 
 Instead of creating a WebRTC "offer" and post it, you could just search for other peoples' offers.
 
@@ -82,7 +78,7 @@ If there is no offer available, then it should return nothing (an empty string, 
 If there is no offer available, but long polling is activated, then the server should just wait to respond
 until there is an offer available (or as long as the server could keep a long polling connection).
 
-#### Send an answer and wait for candidates
+### Send an answer and wait for candidates
 
 If you got an offer, create a WebRTC answer and send it to the sigRTC server.
 
@@ -104,7 +100,7 @@ This request should return:
       ]
     }
 
-#### Send candidates
+### Send candidates
 
 Send candidates to the other user.
 
@@ -125,7 +121,7 @@ or whatever...).
 If this2 call is made by the one who made an answer, then this call is not long polling and it will always
 return nothing.
 
-#### The full connection process:
+### The full connection process:
 
 1. Client tries to find and offer (`act=find`), with long polling turned off (`long=0`)
 2. If there was an offer available, then Goto 9. Otherwise continue at 3.
