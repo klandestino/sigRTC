@@ -62,9 +62,6 @@ Instead of creating a WebRTC "offer" and post it, you could just search for othe
 
     realm=MyApp
     act=find
-    long=0
-
-The `long` POST variable could be 0 or 1. If it is 1, long polling is activated.
 
 This request should return:
 
@@ -74,9 +71,6 @@ This request should return:
     }
 
 If there is no offer available, then it should return nothing (an empty string, 0 bytes, you know...).
-
-If there is no offer available, but long polling is activated, then the server should just wait to respond
-until there is an offer available (or as long as the server could keep a long polling connection).
 
 ### Send an answer and wait for candidates
 
@@ -123,7 +117,7 @@ return nothing.
 
 ### The full connection process:
 
-1. Client tries to find and offer (`act=find`), with long polling turned off (`long=0`)
+1. Client tries to find and offer (`act=find`)
 2. If there was an offer available, then Goto 9. Otherwise continue at 3.
 3. There was no available offer, so we create an offer and send it (`act=offer`) and get an ID back.
 4. Now, wait for an answer, doing long polling (`act=wait`).
