@@ -1,8 +1,8 @@
-## What is sigRTC?
+## sigRTC - a WebRTC Signalling Protocol
 
 * A generic HTTP protocol for exchanging WebRTC "offers", "answers" and "candidates",
   to start WebRTC P2P connections.
-* Very minimalistic approach on the protocol, trying to keep bandwidth and number of requests down.
+* Minimalistic approach on the protocol, trying to keep bandwidth and number of requests down.
 * The protocol does not do any authentication/authorization. The intent is to make P2P available for all!
 * Anyone who would like to participate to a more open/free Internet should be able to deploy this protocol
   at their web server/page. (That means: We should have lots of implementations in different languages,
@@ -62,9 +62,6 @@ Instead of creating a WebRTC "offer" and post it, you could just search for othe
 
     realm=MyApp
     act=find
-    long=0
-
-The `long` POST variable could be 0 or 1. If it is 1, long polling is activated.
 
 This request should return:
 
@@ -74,9 +71,6 @@ This request should return:
     }
 
 If there is no offer available, then it should return nothing (an empty string, 0 bytes, you know...).
-
-If there is no offer available, but long polling is activated, then the server should just wait to respond
-until there is an offer available (or as long as the server could keep a long polling connection).
 
 ### Send an answer and wait for candidates
 
@@ -123,7 +117,7 @@ return nothing.
 
 ### The full connection process:
 
-1. Client tries to find and offer (`act=find`), with long polling turned off (`long=0`)
+1. Client tries to find and offer (`act=find`)
 2. If there was an offer available, then Goto 9. Otherwise continue at 3.
 3. There was no available offer, so we create an offer and send it (`act=offer`) and get an ID back.
 4. Now, wait for an answer, doing long polling (`act=wait`).
