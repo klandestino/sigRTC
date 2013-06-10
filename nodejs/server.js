@@ -5,7 +5,8 @@ var
 var
 	answers = {},
 	offers = {},
-	candidates = {};
+	candidates = {},
+	alreadyconn = {};
 
 http.createServer(function(req, res) {
 	res.writeHead(200, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'});
@@ -31,6 +32,7 @@ http.createServer(function(req, res) {
 				if (typeof offers[epochMin][postvars.realm] === 'undefined') offers[epochMin][postvars.realm] = {};
 				var rnd = Math.floor(Math.random() * 10000);
 				offers[epochMin][postvars.realm][epochMS + '.' + rnd] = postvars.sdp;
+				if (postvars.alreadyconn) alreadyconn[epochMin + '-' + postvars.realm + '-' + epochMS + '.' + rnd] = postvars.alreadyconn;
 				return res.end(JSON.stringify({id: epochMin + '-' + postvars.realm + '-' + epochMS + '.' + rnd}));
 
 			} else if (postvars.act === 'wait') {
@@ -41,6 +43,7 @@ http.createServer(function(req, res) {
 					if (typeof answers[postvars.id] !== 'undefined') {
 						res.end(JSON.stringify({sdp: answers[postvars.id]}));
 						delete answers[postvars.id];
+						delete alreadyconn[postvars.id];
 						return;
 					}
 					waiterCounter += 1;
@@ -57,9 +60,24 @@ http.createServer(function(req, res) {
 					if (typeof offers[i] !== 'undefined' && typeof offers[i][postvars.realm]) {
 						for (var key in offers[i][postvars.realm]) {
 							if (offers[i][postvars.realm].hasOwnProperty(key)) {
-								res.end(JSON.stringify({sdp: offers[i][postvars.realm][key], id: i + '-' + postvars.realm + '-' + key}));
-								delete offers[i][postvars.realm][key];
-								return;
+
+								var alreadyconnected = false;
+								if (alreadyconn[i + '-' + postvars.realm + '-' + key] && postvars.alreadyconn) {
+									var ac0 = alreadyconn[i + '-' + postvars.realm + '-' + key].split(',');
+									var ac1 = postvars.alreadyconn.split(',');
+									for (var ac0c = 0; ac0c < ac0.length; ac0c++) {
+										for (var ac1c = 0; ac1c < ac1.length; ac1c++) {
+											if (ac0[ac0c] == ac1[ac1c]) alreadyconnected = true;
+										}
+									}
+								}
+
+								if (!alreadyconnected) {
+									res.end(JSON.stringify({sdp: offers[i][postvars.realm][key], id: i + '-' + postvars.realm + '-' + key}));
+									delete offers[i][postvars.realm][key];
+									delete alreadyconn[i + '-' + postvars.realm + '-' + key];
+									return;
+								}
 							}
 						}
 					}
