@@ -48,5 +48,11 @@ $(document).ready(function() {
 		}
 		newConnection();
 
+	}, function(err) {
+		if (err.code == 1) {
+			$('#content').html('<h1>No Cam</h1><p>Please, allow us to use your camera!</p>');
+		} else {
+			$('#content').html('<h1>No Cam</h1><p>You need a webcam to use this service!</p>');
+		}
 	});
 });
