@@ -1,7 +1,8 @@
 ## sigRTC - a WebRTC Signalling Protocol
 
 * A generic HTTP protocol for exchanging WebRTC "offers", "answers" and "candidates",
-  to start WebRTC P2P connections.
+  to start WebRTC P2P connections. We recommend this protocol for only initiating WebRTC connections,
+  and to do renegotiation over the DataChannel API when the connection is already established.
 * Minimalistic approach on the protocol, trying to keep bandwidth and number of requests down.
 * The protocol does not do any authentication/authorization. The intent is to make P2P available for all!
 * Anyone who would like to participate to a more open/free Internet should be able to deploy this protocol
@@ -34,12 +35,18 @@ When you have created a WebRTC "offer", you should post it to a sigRTC server to
     realm=myapp
     act=offer
     sdp=[webrtc offer sdp string]
+    alreadyconn=[comma separated list of id:s that the client already is connected with]
 
 This request should return an ID string, identifying this connection attempt:
 
     { "id": "d131dd02c5e6eec4" }
 
-The id string could be anything. It is up to the server implementation to make sure it is something unique.
+The id string could be anything, but must not contain comma (,) sign, since comma will be used
+for separation. It is up to the server implementation to make sure it is something unique.
+
+alreadyconn is used to make sure the same clients does not get multiple connections to each other.
+If two clients have one (or more) common id in their alreadyconn when doing act=offer and act=find,
+then they should not be paired together by the server.
 
 ### Wait for an answer
 
@@ -62,6 +69,7 @@ Instead of creating a WebRTC "offer" and post it, you could just search for othe
 
     realm=MyApp
     act=find
+    alreadyconn=[comma separated list of id:s that the client already is connected with]
 
 This request should return:
 
@@ -71,6 +79,10 @@ This request should return:
     }
 
 If there is no offer available, then it should return nothing (an empty string, 0 bytes, you know...).
+
+alreadyconn is used to make sure the same clients does not get multiple connections to each other.
+If two clients have one (or more) common id in their alreadyconn when doing act=offer and act=find,
+then they should not be paired together by the server.
 
 ### Send an answer and wait for candidates
 
