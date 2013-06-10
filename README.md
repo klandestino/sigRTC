@@ -1,7 +1,8 @@
 ## sigRTC - a WebRTC Signalling Protocol
 
 * A generic HTTP protocol for exchanging WebRTC "offers", "answers" and "candidates",
-  to start WebRTC P2P connections.
+  to start WebRTC P2P connections. We recommend this protocol for only initiating WebRTC connections,
+  and to do renegotiation over the DataChannel API when the connection is already established.
 * Minimalistic approach on the protocol, trying to keep bandwidth and number of requests down.
 * The protocol does not do any authentication/authorization. The intent is to make P2P available for all!
 * Anyone who would like to participate to a more open/free Internet should be able to deploy this protocol
