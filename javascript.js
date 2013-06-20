@@ -1,58 +1,42 @@
 $(document).ready(function() {
 
-	function randStr(length) {
-		var result = '';
-		var possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-		for (var i = 0; i < length; i++) {
-			result += possible.charAt(Math.floor(Math.random() * possible.length));
-		}
-		return result;
+	var url = window.location.href.split('/');
+	if (url.length === 4 && url[3].length === 0) {
+		window.location.href = '/' + (Math.PI * Math.max(0.01, Math.random())).toString(36).substr(2, 7);
+		return;
 	}
 
-	// Get room name/identifyer from URL:
-	var room = window.location.href.replace(/\/$/, '').split('/');
-	room.shift(); room.shift(); room.shift();
-	room = room.join('slash').replace(/[^a-z0-9]/g, '');
-
-	if (room == '') {
-		window.location.href = '/' + randStr(16);
-	}
-
-	// Array of all connections we already have.
-	var alreadyconnected = [];
-
-	// Remove the SEO copy and display #content:
-	$('#content').html('').show();
-
-	// Permission to use camera and microphone:
-	navigator.webkitGetUserMedia({ "audio": true, "video": true }, function(localStream) {
-
-		var newConnection = function() {
-			window.turnserversDotComAPI.iceServers(function(data) {
-				var peerConnection = new webkitRTCPeerConnection({ iceServers: data }, {optional: [{RtpDataChannels: true}]});
-				peerConnection.addStream(localStream);
-				peerConnection.onaddstream = function(e) {
-
-					// Add the video element.
-					$('#content').append('<video width="160" height="120" src="' + URL.createObjectURL(e.stream) + '" autoplay></video>');
-
-					// Always keep getting more connections.
-					newConnection();
-
-				}
-
-				window.SigRTC(peerConnection, 'hangoutplankanu' + room, alreadyconnected, function(id) {
-					alreadyconnected.push(id);
-				});
-			});
+	var chatDataChannel;
+	var rtcOptions = {
+		connect: function(peerConnection) {
+			// We want more connections!
+			console.log('CONNECTED!');
+			chatDataChannel = peerConnection.createDataChannel('chat', { reliable: false });
+			chatDataChannel.onopen = function() {
+				console.log('Chat Channel Opened!');
+				console.dir(chatDataChannel);
+			};
+			chatDataChannel.onclose = function() {
+				console.log('Chat Channel Closed!');
+				console.dir(chatDataChannel);
+			};
+			chatDataChannel.onerror = function() {
+				console.log('Chat Channel Error');
+				console.dir(chatDataChannel);
+			};
+			chatDataChannel.onmessage = function(e) {
+				$('#msgs').append('<p>' + e.data + '</p>');
+			};
 		}
-		newConnection();
+	};
+	$.sigRTC(rtcOptions);
 
-	}, function(err) {
-		if (err.code == 1) {
-			$('#content').html('<h1>No Cam</h1><p>Please, allow us to use your camera!</p>');
-		} else {
-			$('#content').html('<h1>No Cam</h1><p>You need a webcam to use this service!</p>');
+	$('#chatinput').keyup(function(e) {
+		if (e.keyCode == 13) {
+			console.dir(chatDataChannel);
+			chatDataChannel.send($(this).val());
+			$(this).val('');
 		}
 	});
+
 });
