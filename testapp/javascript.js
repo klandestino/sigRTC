@@ -1,73 +1,42 @@
+$(document).ready(function() {
 
-peerConnection = new webkitRTCPeerConnection({ iceServers: [ {"url": "stun:stun.l.google.com:19302"} ] }, {optional: [{RtpDataChannels: true}]});
-
-document.getElementById('offerButton').onclick = function() {
-
-	peerConnection.createOffer(function(description) {
-		peerConnection.setLocalDescription(description);
-		document.getElementById('offer').value = JSON.stringify(description);
-	});
-
-};
-
-document.getElementById('answerButton').onclick = function() {
-
-	peerConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(document.getElementById('incomingoffer').value)));
-
-	peerConnection.createAnswer(function(description) {
-		peerConnection.setLocalDescription(description);
-		document.getElementById('answer').value = JSON.stringify(description);
-	});
-
-};
-
-document.getElementById('getAnswerButton').onclick = function() {
-
-	peerConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(document.getElementById('incominganswer').value)));
-
-}
-
-peerConnection.onicecandidate = function(e) {
-	if (e.candidate != null) {
-		document.getElementById('localcandidates').value = document.getElementById('localcandidates').value + JSON.stringify(e.candidate) + "\n";
+	var url = window.location.href.split('/');
+	if (url.length === 4 && url[3].length === 0) {
+		window.location.href = '/' + (Math.PI * Math.max(0.01, Math.random())).toString(36).substr(2, 7);
+		return;
 	}
-}
 
-document.getElementById('candidatesButton').onclick = function() {
-	candidates = document.getElementById('remotecandidates').value.split("\n");
-	for (i in candidates) {
-		if (candidates[i] != '') {
-			candidate = JSON.parse(candidates[i]);
-			peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+	var chatDataChannel;
+	var rtcOptions = {
+		connect: function(peerConnection) {
+			// We want more connections!
+			console.log('CONNECTED!');
+			chatDataChannel = peerConnection.createDataChannel('chat', { reliable: false });
+			chatDataChannel.onopen = function() {
+				console.log('Chat Channel Opened!');
+				console.dir(chatDataChannel);
+			};
+			chatDataChannel.onclose = function() {
+				console.log('Chat Channel Closed!');
+				console.dir(chatDataChannel);
+			};
+			chatDataChannel.onerror = function() {
+				console.log('Chat Channel Error');
+				console.dir(chatDataChannel);
+			};
+			chatDataChannel.onmessage = function(e) {
+				$('#msgs').append('<p>' + e.data + '</p>');
+			};
 		}
-	}
-}
+	};
+	$.sigRTC(rtcOptions);
 
-navigator.webkitGetUserMedia({ "audio": true, "video": true }, function (stream) {
-	peerConnection.addStream(stream);
+	$('#chatinput').keyup(function(e) {
+		if (e.keyCode == 13) {
+			console.dir(chatDataChannel);
+			chatDataChannel.send($(this).val());
+			$(this).val('');
+		}
+	});
+
 });
-
-peerConnection.onaddstream = function(e) {
-	document.getElementById('ljudobild').src = URL.createObjectURL(e.stream);
-	console.log('Remote stream added.');
-};
-
-function addChatMsg(str) {
-	document.getElementById('chatoutput').appendChild(document.createTextNode(str));
-	document.getElementById('chatoutput').appendChild(document.createElement('br'));
-}
-dataChannel = peerConnection.createDataChannel('test', {reliable:false});
-document.getElementById('chatinput').onkeyup = function(e) {
-	if (e.keyCode == 13) {
-		dataChannel.send(document.getElementById('chatinput').value);
-		addChatMsg('Jag: ' + document.getElementById('chatinput').value);
-		document.getElementById('chatinput').value = '';
-
-	}
-}
-dataChannel.onmessage = function(e) {
-	addChatMsg('Du: ' + e.data);
-}
-
-
-
