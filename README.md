@@ -142,4 +142,3 @@ return nothing.
 11. If candidates never arrive, then retry! Goto 9.
 12. Send our own candidates (`act=cand` & `who=answer`).
 13. You are finished! WebRTC should be able to connect!
-
