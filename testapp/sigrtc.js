@@ -1,4 +1,4 @@
-(function($) {
+(function() {
 
 	// Cross-browser hell
 	var PeerConnection = window.webkitRTCPeerConnection || window.mozRTCPeerConnection || window.RTCPeerConnection;
@@ -21,7 +21,7 @@
 	// Array with all id:s of successful connection attempts:
 	var alreadyconnected = [];
 
-	$.sigRTC = function(options) {
+	sigRTC = function(options) {
 
 		var offerer = false; // Was I the one who created an offer? (That means I will continue creating all offers on renegotiations.)
 
@@ -77,6 +77,7 @@
 					}
 					for (var i = 0; i < outbuffer[0].length; i++) {
 						if (outbuffer[0][i] !== '') {
+							console.log(outcounter + ':' + i + ':' + outbuffer[0].length + ':' + outbuffer[0][i]);
 							channel.send(outcounter + ':' + i + ':' + outbuffer[0].length + ':' + outbuffer[0][i]);
 						}
 					}
@@ -167,11 +168,18 @@
 		// Candidates will be stored in this array, to be sent to remote.
 		var myCandidates = [];
 		(function() {
+			var cc = 0;
 			var c = [];
+			// Dont populate myCandidate until there is a null candidate.
 			peerConnection.onicecandidate = function(e) {
 				if (e.candidate != null) {
+
+					cc += 1;
+					console.log('onicecandidate counter = ' + cc);
+
 					c.push(e.candidate);
 				} else {
+					console.log('Got null candidate.');
 					myCandidates = c;
 					c = [];
 				}
@@ -338,12 +346,12 @@
 		};
 		
 		var sendCandidates = function(id, who, callback) {
-			console.log('sendCandidates(id=' + id + ');');
 			if (myCandidates.length == 0) {
 				setTimeout(function() {
 					sendCandidates(id, who, callback);
 				}, 200);
 			} else {
+				console.log('sendCandidates(id=' + id + ');');
 				$.ajax({
 					data: {
 						'realm': realm(),
@@ -357,6 +365,8 @@
 						callback('Ajax error.');
 					},
 					success: function(data) {
+						console.log('Response on sendCandidates:');
+						console.dir(data);
 						if (data.candidates) {
 							if (callback) callback(null, data.candidates);
 						} else {
@@ -416,6 +426,7 @@
 							console.log('Fail when sending answer.');
 						} else {
 							console.log('Answer was send, we got candidates in return.');
+							console.dir(candidates);
 
 							for (var i = 0; i < candidates.length; i++) {
 								if (candidates[i] != '') {
@@ -441,6 +452,6 @@
 		});
 
 	};
-}(jQuery));
+}());
 
 

@@ -29,7 +29,7 @@ $(document).ready(function() {
 			};
 		}
 	};
-	$.sigRTC(rtcOptions);
+	sigRTC(rtcOptions);
 
 	$('#chatinput').keyup(function(e) {
 		if (e.keyCode == 13) {
