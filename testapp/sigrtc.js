@@ -9,6 +9,7 @@
 			try {
 				var pc = new PeerConnection(null, {optional: [{RtpDataChannels: true}]});
 				pc.createDataChannel('feat',{reliable:false}).close()
+				delete(pc);
 				return true;
 			} catch(e){
 				return false;
@@ -21,9 +22,11 @@
 	// Array with all id:s of successful connection attempts:
 	var alreadyconnected = [];
 
-	sigRTC = function(options) {
+	var offerer = false; // Was I the one who created an offer? (That means I will continue creating all offers on renegotiations.) Global for all instances.
 
-		var offerer = false; // Was I the one who created an offer? (That means I will continue creating all offers on renegotiations.)
+	var Instance = function(options) {
+
+		var instance = this;
 
 		// The settings...
 		var settings = $.extend({
@@ -31,8 +34,13 @@
 			},
 			error: function(err) { // Callback on errors.
 			},
-			realm: window.location.href
+			realm: window.location.href,
+			signalingDataChannel: null
 		}, options);
+
+		var isSignalingInstance = function () {
+			return (settings.signalingDataChannel === null);
+		}
 
 		// Run error callback if WebRTC is not supported by browser.
 		if (!supported) {
@@ -47,13 +55,13 @@
 				peerConnection = new PeerConnection({ iceServers: data }, {optional: [{RtpDataChannels: true}]});
 			});
 		} else {
-			peerConnection = new PeerConnection({ iceServers: [ { url: 'stun:stun.turnservers.com:3478' } ] }, { optional: [ { RtpDataChannels: true } ] });
+			peerConnection = new PeerConnection({ iceServers: [ { url: 'stun:stun.l.google.com:19302' } ] }, { optional: [ { RtpDataChannels: true } ] });
 		}
 
 		// Create signaling data channel.
 		// First we are using sigRTC server to create a PeerConnection using server signaling,
 		// but when the connection is established, renegotiation will use this signalingDataChannel.
-		var signalingDataChannel;
+		var signalingDataChannel = instance.signalingDataChannel = settings.signalingDataChannel;
 		(function() { // Loads of logic to make non-reliable DataChannelss reliable:
 			var channel = peerConnection.createDataChannel('signaling', { reliable: false });
 			channel.onopen = function(e) {
@@ -77,8 +85,11 @@
 					}
 					for (var i = 0; i < outbuffer[0].length; i++) {
 						if (outbuffer[0][i] !== '') {
-							console.log(outcounter + ':' + i + ':' + outbuffer[0].length + ':' + outbuffer[0][i]);
-							channel.send(outcounter + ':' + i + ':' + outbuffer[0].length + ':' + outbuffer[0][i]);
+							try {
+								channel.send(outcounter + ':' + i + ':' + outbuffer[0].length + ':' + outbuffer[0][i]);
+							} catch(e) {
+								//console.log(e);
+							}
 						}
 					}
 				}
@@ -86,9 +97,11 @@
 				(function(oldOutcounter) {
 					sendMsgsTimeout = setTimeout(function() {
 						if (oldOutcounter === outcounter) {
+							console.log('resend: ' + outcounter + ' - outbuffer: ' + outbuffer.length);
 							// We are still left here. Resend non ACK-ed!
 							sendMsgs();
 						} else {
+							console.log('successfull send: ' + oldOutcounter);
 							sendMsgsTimeout = null;
 						}
 					}, 1000);
@@ -102,6 +115,7 @@
 					if (ackParts[1] === outcounter.toString()) {
 						if (typeof outbuffer[0][parseInt(ackParts[2])] !== 'undefined') outbuffer[0][parseInt(ackParts[2])] = '';
 						if (outbuffer[0].join('') === '') { // All was ACK:ed?
+							console.log('acked send: ' + outcounter);
 							outbuffer.shift();
 							outcounter++;
 							sendMsgs();
@@ -110,11 +124,19 @@
 				} else {
 					var msgParts = e.data.split(':');
 					if (incounter > parseInt(msgParts[0])) {
-						channel.send('ACK:' + msgParts[0] + ':' + msgParts[1]);
+						try {
+							channel.send('ACK:' + msgParts[0] + ':' + msgParts[1]);
+						} catch(e) {
+							//console.log(e);
+						}
 						return;
 					} else if (incounter.toString() === msgParts[0]) {
 						inbuffer[msgParts[1]] = msgParts[3];
-						channel.send('ACK:' + incounter + ':' + msgParts[1]);
+						try {
+							channel.send('ACK:' + incounter + ':' + msgParts[1]);
+						} catch(e) {
+							// console.log(e);
+						}
 						if (inbuffer.length.toString() === msgParts[2]) {
 							signalingDataChannel.onmessage({
 								data: atob(inbuffer.join(''))
@@ -125,66 +147,81 @@
 					}
 				}
 			};
-			signalingDataChannel = {
-				onmessage: function(e) {
-				},
-				onopen: function(e) {
-				},
-				send: function(str) {
-					if (str !== '') {
-						outbuffer.push(btoa(str));
-						if (sendMsgsTimeout === null) sendMsgs();
+			if (signalingDataChannel === null) {
+				signalingDataChannel = instance.signalingDataChannel = {
+					onmessage: function(e) {
+					},
+					onopen: function(e) {
+					},
+					send: function(str) {
+						if (str !== '') {
+							outbuffer.push(btoa(str));
+							if (sendMsgsTimeout === null) sendMsgs();
+						}
 					}
-				}
-			};
+				};
+			}
 		}());
 
-		signalingDataChannel.onmessage = function(e) {
-			console.dir(e.data);
-			if (offerer && e.data == 'renegotiationneeded') {
-				renegotiate(); // Other end wants a new offer!
-			} else if (!offerer && e.data.substr(0, 7) == 'offer: ') {
-				peerConnection.setRemoteDescription(new RTCSessionDescription({sdp: e.data.substr(7), type: 'offer'}));
-				peerConnection.createAnswer(function(description) {
-					peerConnection.setLocalDescription(description);
-					signalingDataChannel.send('answer: ' + description.sdp);
-				});
-			} else if (offerer && e.data.substr(0, 8) == 'answer: ') {
-				peerConnection.setRemoteDescription(new RTCSessionDescription({sdp: e.data.substr(8), type: 'answer'}));
-			}
+		if (!isSignalingInstance()) {
 
-		};
+			signalingDataChannel.onmessage = function(e) {
+				if (offerer && e.data == 'renegotiationneeded') {
+					renegotiate(); // Other end wants a new offer!
+				} else if (!offerer && e.data.substr(0, 7) == 'offer: ') {
+					peerConnection.setRemoteDescription(new RTCSessionDescription({sdp: e.data.substr(7), type: 'offer'}));
+					peerConnection.createAnswer(function(description) {
+						peerConnection.setLocalDescription(description);
+						signalingDataChannel.send('answer: ' + description.sdp);
+					});
+				} else if (offerer && e.data.substr(0, 8) == 'answer: ') {
+					peerConnection.setRemoteDescription(new RTCSessionDescription({sdp: e.data.substr(8), type: 'answer'}));
+				} else if (offerer && e.data.substr(0, 11) == 'candidate: ') {
+					peerConnection.addIceCandidate(new RTCIceCandidate({candidate: e.data.substr(11)}));
+					
+				}
+			};
 
-		// Function to renegotiate with a new offer
-		var renegotiate = function() {
-			//if (peerConnection.signalingState == 'stable') {
-				peerConnection.createOffer(function(description) {
-					peerConnection.setLocalDescription(description);
-					signalingDataChannel.send('offer: ' + description.sdp);
-				});
-			//}
-		};
+			// Function to renegotiate with a new offer
+			var renegotiate = function() {
+				//if (peerConnection.signalingState == 'stable') {
+					peerConnection.createOffer(function(description) {
+						peerConnection.setLocalDescription(description);
+						signalingDataChannel.send('offer: ' + description.sdp);
+					});
+				//}
+			};
 
-		// Candidates will be stored in this array, to be sent to remote.
-		var myCandidates = [];
-		(function() {
-			var cc = 0;
-			var c = [];
-			// Dont populate myCandidate until there is a null candidate.
+		}
+
+		if (isSignalingInstance()) {
+
+			// Candidates will be stored in this array, to be sent to remote.
+			var myCandidates = [];
+			(function() {
+				var c = [];
+				// Dont populate myCandidate until there is a null candidate.
+				peerConnection.onicecandidate = function(e) {
+					if (e.candidate != null) {
+						c.push(e.candidate);
+					} else {
+						console.log('Got null candidate.');
+						myCandidates = c;
+						c = [];
+					}
+				}
+			})();
+
+		} else {
 			peerConnection.onicecandidate = function(e) {
 				if (e.candidate != null) {
-
-					cc += 1;
-					console.log('onicecandidate counter = ' + cc);
-
-					c.push(e.candidate);
-				} else {
-					console.log('Got null candidate.');
-					myCandidates = c;
-					c = [];
+					
+					setTimeout(function() {
+						signalingDataChannel.send('candidate: ' + e.candidate.candidate);
+					}, 1000);
 				}
 			}
-		})();
+		}
 
 		peerConnection.onconnecting = function(e) {
 			console.log('peerConnection.onconnecting');
@@ -209,25 +246,29 @@
 			console.log('peerConnection.onnegotiationneeded');
 		};
 
+		if (!isSignalingInstance()) {
+
+			if (!offerer) {
+				peerConnection.onnegotiationneeded = function(e) {
+					console.log('peerConnection.onnegotiationneeded');
+					signalingDataChannel.send('renegotiationneeded');
+				}
+			} else {
+				peerConnection.onnegotiationneeded = function(e) {
+					console.log('peerConnection.onnegotiationneeded (at offerers end)');
+					renegotiate(); 
+				}
+			}
+
+		}
+
 		(function() {
+			console.log('apa');
 			var connectCounter = 0;
 			peerConnection.ongatheringchange = peerConnection.oniceconnectionstatechange = peerConnection.onsignalingstatechange = function(e) {
-				console.log('signalingState: ' + peerConnection.signalingState + ' - iceConnectionState: ' + peerConnection.iceConnectionState + ' - iceGatheringState: ' + peerConnection.iceGatheringState);
-				if (connectCounter == 0 && peerConnection.signalingState == 'stable' && peerConnection.iceConnectionState == 'connected' && peerConnection.iceGatheringState == 'complete') {
+				console.log('signalingState: ' + peerConnection.signalingState + ' - iceConnectionState: ' + peerConnection.iceConnectionState + ' - iceGatheringState: ' + peerConnection.iceGatheringState + ' - connectCounter: ' + connectCounter);
+				if (connectCounter === 0 && peerConnection.signalingState == 'stable' && peerConnection.iceConnectionState == 'connected' && peerConnection.iceGatheringState == 'complete') {
 					settings.connect(peerConnection);
-
-					// Change the onnegotiationneeded event, since we will do negotiation over DataChannel API not server...
-					if (!offerer) {
-						peerConnection.onnegotiationneeded = function(e) {
-							console.log('peerConnection.onnegotiationneeded');
-							signalingDataChannel.send('renegotiationneeded');
-						}
-					} else {
-						peerConnection.onnegotiationneeded = function(e) {
-							console.log('peerConnection.onnegotiationneeded');
-							renegotiate(); 
-						}
-					}
 
 					connectCounter++;
 				}
@@ -263,7 +304,7 @@
 				url: '//sigrtc.turnservers.com/'
 			});
 		};
-		
+
 		var sendOffer = function(sdp, callback) {
 			offerer = true;
 			console.log('sendOffer();');
@@ -366,7 +407,6 @@
 					},
 					success: function(data) {
 						console.log('Response on sendCandidates:');
-						console.dir(data);
 						if (data.candidates) {
 							if (callback) callback(null, data.candidates);
 						} else {
@@ -379,79 +419,117 @@
 			}
 		};
 
-		findOffer(function(err, sdp, id) {
-			if (err) {
-				console.log('Got no offer.');
-				peerConnection.createOffer(function(description) {
-					peerConnection.setLocalDescription(description);
-					console.log('Created offer.');
-					sendOffer(description.sdp, function(err, id) {
-						console.log('Offer was sent.');
-						waitForAnswer(id, function(err, sdp) {
-							if (err) {
-								console.log('Got no answer.');
-								// Something failed.
-							} else {
-								console.log('Got answer, id: ' + id);
+		if (isSignalingInstance()) {
 
-								peerConnection.setRemoteDescription(new RTCSessionDescription({sdp: sdp, type: 'answer'}));
-								sendCandidates(id, 'offer', function(err, candidates) {
-									if (err) {
-										console.log('Error sending/getting candidates.');
-										// Some error.
-									} else {
-										console.log('Got candidates.');
-										for (var i = 0; i < candidates.length; i++) {
-											if (candidates[i] != '') {
-												peerConnection.addIceCandidate(new RTCIceCandidate(candidates[i]));
+			console.log('-----------------------a SINGALING INSTANCE-');
+
+
+			findOffer(function(err, sdp, id) {
+				if (err) {
+					console.log('Got no offer.');
+					peerConnection.createOffer(function(description) {
+						peerConnection.setLocalDescription(description);
+						console.log('Created offer.');
+						sendOffer(description.sdp, function(err, id) {
+							console.log('Offer was sent.');
+							waitForAnswer(id, function(err, sdp) {
+								if (err) {
+									console.log('Got no answer.');
+									// Something failed.
+								} else {
+									console.log('Got answer, id: ' + id);
+
+									peerConnection.setRemoteDescription(new RTCSessionDescription({sdp: sdp, type: 'answer'}));
+									sendCandidates(id, 'offer', function(err, candidates) {
+										if (err) {
+											console.log('Error sending/getting candidates.');
+											// Some error.
+										} else {
+											console.log('Got candidates.');
+											for (var i = 0; i < candidates.length; i++) {
+												if (candidates[i] != '') {
+													peerConnection.addIceCandidate(new RTCIceCandidate(candidates[i]));
+												}
 											}
 										}
-									}
-								});
-							}
+									});
+								}
+							});
+
 						});
 
 					});
 
-				});
+				} else {
+					console.log('There was an offer.');
+					peerConnection.setRemoteDescription(new RTCSessionDescription({sdp: sdp, type: 'offer'}));
+					peerConnection.createAnswer(function(description) {
+						console.log('Created answer.');
+						peerConnection.setLocalDescription(description);
+						sendAnswer(description.sdp, id, function(err, candidates) {
+							if (err) {
+								console.log('Fail when sending answer.');
+							} else {
+								console.log('Answer was send, we got candidates in return.');
 
-			} else {
-				console.log('There was an offer.');
-				peerConnection.setRemoteDescription(new RTCSessionDescription({sdp: sdp, type: 'offer'}));
-				peerConnection.createAnswer(function(description) {
-					console.log('Created answer.');
-					peerConnection.setLocalDescription(description);
-					sendAnswer(description.sdp, id, function(err, candidates) {
-						if (err) {
-							console.log('Fail when sending answer.');
-						} else {
-							console.log('Answer was send, we got candidates in return.');
-							console.dir(candidates);
-
-							for (var i = 0; i < candidates.length; i++) {
-								if (candidates[i] != '') {
-									peerConnection.addIceCandidate(new RTCIceCandidate(candidates[i]));
+								for (var i = 0; i < candidates.length; i++) {
+									if (candidates[i] != '') {
+										peerConnection.addIceCandidate(new RTCIceCandidate(candidates[i]));
+									}
 								}
+								sendCandidates(id, 'answer', function(err) {
+									if (err) {
+										console.log('Fail when sending my own candidates.');
+										// Now what!?
+									} else {
+										console.log('My own candidates was send.');
+										// We are done here.
+									}
+								});
+
 							}
-							sendCandidates(id, 'answer', function(err) {
-								if (err) {
-									console.log('Fail when sending my own candidates.');
-									// Now what!?
-								} else {
-									console.log('My own candidates was send.');
-									// We are done here.
-								}
-							});
-
-						}
+						});
 					});
+
+					
+				}
+			});
+
+		} else {
+
+			console.log('------------------------');
+
+		}
+	};
+
+	sigRTC = function(options) {
+		// The settings...
+		var settings = $.extend({
+			connect: function(peerConnection) { // Callback when successfully connected.
+			},
+			error: function(err) { // Callback on errors.
+			},
+			realm: window.location.href
+		}, options);
+
+		var signalingInstance = new Instance({
+			connect: function (peerConnection) {
+
+				var dataInstance = new Instance({
+					connect: settings.connect,
+					error: settings.error,
+					realm: '',
+					signalingDataChannel: signalingInstance.signalingDataChannel
 				});
 
-				
-			}
+			},
+			error: function (err) {
+				options.error(err);
+			},
+			realm: options.realm
 		});
-
 	};
+
 }());
 
 
