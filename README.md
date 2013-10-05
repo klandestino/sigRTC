@@ -48,6 +48,14 @@ alreadyconn is used to make sure the same clients does not get multiple connecti
 If two clients have one (or more) common id in their alreadyconn when doing act=offer and act=find,
 then they should not be paired together by the server.
 
+### Delete an offer
+
+If you want to remove an unanswered offer:
+
+    realm=myapp
+    act=delete
+    id=[id of the offer to be deleted]
+
 ### Wait for an answer
 
 After you have sent an offer and got an ID, you should wait for an answer.
