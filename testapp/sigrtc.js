@@ -35,7 +35,8 @@
 			error: function(err) { // Callback on errors.
 			},
 			realm: window.location.href,
-			signalingDataChannel: null
+			signalingDataChannel: null,
+			customPostData: {}
 		}, options);
 
 		var isSignalingInstance = function () {
@@ -126,6 +127,7 @@
 					if (incounter > parseInt(msgParts[0])) {
 						try {
 							channel.send('ACK:' + msgParts[0] + ':' + msgParts[1]);
+							console.log('ACK:' + msgParts[0] + ':' + msgParts[1]);
 						} catch(e) {
 							//console.log(e);
 						}
@@ -134,6 +136,7 @@
 						inbuffer[msgParts[1]] = msgParts[3];
 						try {
 							channel.send('ACK:' + incounter + ':' + msgParts[1]);
+							console.log('ACK:' + incounter + ':' + msgParts[1]);
 						} catch(e) {
 							// console.log(e);
 						}
@@ -256,7 +259,7 @@
 			} else {
 				peerConnection.onnegotiationneeded = function(e) {
 					console.log('peerConnection.onnegotiationneeded (at offerers end)');
-					renegotiate(); 
+					setTimeout(renegotiate, 1000);
 				}
 			}
 
@@ -284,24 +287,43 @@
 		var findOffer = function(callback) {
 			console.log('findOffer();');
 			$.ajax({
-				data: {
+				data: $.extend(true, {
 					'realm': realm(),
 					'act': 'find',
 					'alreadyconn': alreadyconnected.join(',')
-				},
+				}, settings.customPostData),
 				dataType: 'json',
 				error: function() {
-					callback('Ajax error.');
+					callback('Not json, so probably, there was no offer.');
 				},
 				success: function(data) {
-					if (typeof data.sdp == 'undefined' || typeof data.id == 'undefined') {
+					if (data === null || typeof data.sdp == 'undefined' || typeof data.id == 'undefined') {
 						callback('Inproper data from server.');
 						return;
 					}
 					callback(null, data.sdp, data.id);
 				},
 				type: 'POST',
-				url: '//sigrtc.turnservers.com/'
+				url: settings.sigRTCurl
+			});
+		};
+
+		var deleteOffer = function(id, callback) {
+			$.ajax({
+				data: $.extend(true, {
+					'realm': realm(),
+					'act': 'delete',
+					'id': id
+				}, settings.customPostData),
+				dataType: 'json',
+				error: function() {
+					callback();
+				},
+				success: function(data) {
+					callback(null);
+				},
+				type: 'POST',
+				url: settings.sigRTCurl
 			});
 		};
 
@@ -309,25 +331,25 @@
 			offerer = true;
 			console.log('sendOffer();');
 			$.ajax({
-				data: {
+				data: $.extend(true, {
 					'realm': realm(),
 					'act': 'offer',
 					'sdp': sdp,
 					'alreadyconn': alreadyconnected.join(',')
-				},
+				}, settings.customPostData),
 				dataType: 'json',
 				error: function() {
 					callback('Ajax error.');
 				},
 				success: function(data) {
-					if (typeof data.id == 'undefined') {
+					if (data === null || typeof data.id == 'undefined') {
 						callback('Some error occured.');
 						return;
 					}
 					callback(null, data.id);
 				},
 				type: 'POST',
-				url: '//sigrtc.turnservers.com/'
+				url: settings.sigRTCurl
 			});
 
 		};
@@ -335,24 +357,24 @@
 		var waitForAnswer = function(id, callback) {
 			console.log('waitForAnswer();');
 			$.ajax({
-				data: {
+				data: $.extend(true, {
 					'realm': realm(),
 					'act': 'wait',
 					'id': id
-				},
+				}, settings.customPostData),
 				dataType: 'json',
 				error: function() {
 					callback('Ajax error.');
 				},
 				success: function(data) {
-					if (typeof data.sdp == 'undefined') {
+					if (data === null || typeof data.sdp == 'undefined') {
 						callback('No answer in response.');
 						return;
 					}
 					callback(null, data.sdp);
 				},
 				type: 'POST',
-				url: '//sigrtc.turnservers.com/'
+				url: settings.sigRTCurl
 			});
 		};
 		
@@ -360,18 +382,18 @@
 			offerer = false;
 			console.log('sendAnswer();');
 			$.ajax({
-				data: {
+				data: $.extend(true, {
 					'realm': realm(),
 					'act': 'answer',
 					'id': id,
 					'sdp': sdp
-				},
+				}, settings.customPostData),
 				dataType: 'json',
 				error: function() {
 					callback('Ajax error.');
 				},
 				success: function(data) {
-					if (typeof data.candidates == 'undefined') {
+					if (data === null || typeof data.candidates == 'undefined') {
 						callback('No data received from server.');
 						return;
 					}
@@ -382,7 +404,7 @@
 					callback(null, data.candidates);
 				},
 				type: 'POST',
-				url: '//sigrtc.turnservers.com/'
+				url: settings.sigRTCurl
 			});
 		};
 		
@@ -394,27 +416,27 @@
 			} else {
 				console.log('sendCandidates(id=' + id + ');');
 				$.ajax({
-					data: {
+					data: $.extend(true, {
 						'realm': realm(),
 						'act': 'cand',
 						'id': id,
 						'who': who,
 						'candidates': JSON.stringify(myCandidates)
-					},
+					}, settings.customPostData),
 					dataType: 'json',
 					error: function() {
 						callback('Ajax error.');
 					},
 					success: function(data) {
 						console.log('Response on sendCandidates:');
-						if (data.candidates) {
+						if (data !== null && data.candidates) {
 							if (callback) callback(null, data.candidates);
 						} else {
 							if (callback) callback(null);
 						}
 					},
 					type: 'POST',
-					url: '//sigrtc.turnservers.com/'
+					url: settings.sigRTCurl
 				});
 			}
 		};
@@ -431,6 +453,27 @@
 						peerConnection.setLocalDescription(description);
 						console.log('Created offer.');
 						sendOffer(description.sdp, function(err, id) {
+
+							// Unloading should delete an unanswered offer (yeah i know it's somewhat hackish to make it fire as often as possible):
+							var unloadid = id;
+							var unload = function (callback) {
+								return function () {
+									if (unloadid !== null) {
+										deleteOffer(unloadid, function() {
+											if (typeof callback === 'function') {
+												callback();
+											}
+										});
+										unloadid = null;
+									}
+								}
+							}
+							window.onbeforeunload = unload(window.onbeforeunload);
+							window.onunload = unload(window.onunload);
+							$(window).bind('beforeunload', function () {
+								unload();
+							});
+
 							console.log('Offer was sent.');
 							waitForAnswer(id, function(err, sdp) {
 								if (err) {
@@ -438,6 +481,9 @@
 									// Something failed.
 								} else {
 									console.log('Got answer, id: ' + id);
+
+									// do not delete offer id on page unload - it is already deleted!
+									unloadid = null;
 
 									peerConnection.setRemoteDescription(new RTCSessionDescription({sdp: sdp, type: 'answer'}));
 									sendCandidates(id, 'offer', function(err, candidates) {
@@ -509,7 +555,9 @@
 			},
 			error: function(err) { // Callback on errors.
 			},
-			realm: window.location.href
+			realm: window.location.href,
+			sigRTCurl: '//sigrtc.turnservers.com/',
+			customPostData: {}
 		}, options);
 
 		var signalingInstance = new Instance({
@@ -524,9 +572,11 @@
 
 			},
 			error: function (err) {
-				options.error(err);
+				settings.error(err);
 			},
-			realm: options.realm
+			realm: settings.realm,
+			sigRTCurl: settings.sigRTCurl,
+			customPostData: settings.customPostData
 		});
 	};
 

@@ -35,6 +35,15 @@ http.createServer(function(req, res) {
 				if (postvars.alreadyconn) alreadyconn[epochMin + '-' + postvars.realm + '-' + epochMS + '.' + rnd] = postvars.alreadyconn;
 				return res.end(JSON.stringify({id: epochMin + '-' + postvars.realm + '-' + epochMS + '.' + rnd}));
 
+			} else if (postvars.act === 'delete') {
+
+				var deleteData = postvars.id.split('-');
+				if (deleteData.length === 3) {
+					if (typeof offers[deleteData[0]] !== 'undefined' && typeof offers[deleteData[0]][deleteData[1]] !== 'undefined' && typeof offers[deleteData[0]][deleteData[1]][deleteData[2]] !== 'undefined') {
+						delete (offers[deleteData[0]][deleteData[1]][deleteData[2]]);
+					}
+				}
+
 			} else if (postvars.act === 'wait') {
 				if (!postvars.id) return res.end(JSON.stringify({err: "Missing id variable."}));
 					
