@@ -138,6 +138,6 @@ http.createServer(function(req, res) {
 		return res.end(JSON.stringify({err: 'We only do POST requests.'}));
 	}
 
-}).listen(80, '0.0.0.0');
+}).listen(process.env.PORT | 8080, '0.0.0.0');
 
 console.log('Server running.');
