@@ -1,0 +1,26 @@
+{
+	"name": "sigRTC",
+	"version": "0.0.0",
+	"description": "WebRTC signaling server using DHT distributed database to find others to connect to.",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/klandestino/sigRTC"
+	},
+	"keywords": [
+		"webrtc",
+		"dht",
+		"signaling",
+		"signalling",
+		"p2p",
+		"peer to peer"
+	],
+	"author": "Alfred Godoy <alfred@klandestino.se>",
+	"license": "GPLv3",
+	"bugs": {
+		"url": "https://github.com/klandestino/sigRTC/issues"
+	}
+}
